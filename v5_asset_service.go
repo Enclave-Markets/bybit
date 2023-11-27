@@ -1,10 +1,16 @@
 package bybit
 
-import "github.com/google/go-querystring/query"
+import (
+	"encoding/json"
+	"fmt"
+
+	"github.com/google/go-querystring/query"
+)
 
 // V5AssetServiceI :
 type V5AssetServiceI interface {
 	GetInternalTransferRecords(V5GetInternalTransferRecordsParam) (*V5GetInternalTransferRecordsResponse, error)
+	InternalTransfer(V5InternalTransferRecordsParam) (*V5InternalTransferRecordsResponse, error)
 	GetDepositRecords(V5GetDepositRecordsParam) (*V5GetDepositRecordsResponse, error)
 	GetSubDepositRecords(V5GetSubDepositRecordsParam) (*V5GetSubDepositRecordsResponse, error)
 	GetInternalDepositRecords(V5GetInternalDepositRecordsParam) (*V5GetInternalDepositRecordsResponse, error)
@@ -54,7 +60,38 @@ type V5GetInternalTransferRecordsItem struct {
 	Status          TransferStatusV5 `json:"status"`
 }
 
-// GetInternalTransferRecords :
+// V5InternalTransferRecordsParam :
+type V5InternalTransferRecordsParam struct {
+	TransferID      string           `json:"transferId"`
+	Coin            Coin             `json:"coin"`
+	Amount          string           `json:"amount"`
+	FromAccountType AccountTypeV5    `json:"fromAccountType"`
+	ToAccountType   AccountTypeV5    `json:"toAccountType"`
+	Timestamp       string           `json:"timestamp"`
+	Status          TransferStatusV5 `json:"status"`
+}
+
+// V5InternalTransferRecordsResponse :
+type V5InternalTransferRecordsResponse struct {
+	TransferID string `json:"transferId"`
+}
+
+// InternalTransfer :
+func (s *V5AssetService) InternalTransfer(param V5InternalTransferRecordsParam) (*V5InternalTransferRecordsResponse, error) {
+	var res V5InternalTransferRecordsResponse
+
+	body, err := json.Marshal(param)
+	if err != nil {
+		return &res, fmt.Errorf("json marshal: %w", err)
+	}
+
+	if err := s.client.postV5JSON("/v5/asset/transfer/inter-transfer", body, &res); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
 func (s *V5AssetService) GetInternalTransferRecords(param V5GetInternalTransferRecordsParam) (*V5GetInternalTransferRecordsResponse, error) {
 	var res V5GetInternalTransferRecordsResponse
 
