@@ -62,13 +62,11 @@ type V5GetInternalTransferRecordsItem struct {
 
 // V5InternalTransferRecordsParam :
 type V5InternalTransferRecordsParam struct {
-	TransferID      string           `json:"transferId"`
-	Coin            Coin             `json:"coin"`
-	Amount          string           `json:"amount"`
-	FromAccountType AccountTypeV5    `json:"fromAccountType"`
-	ToAccountType   AccountTypeV5    `json:"toAccountType"`
-	Timestamp       string           `json:"timestamp"`
-	Status          TransferStatusV5 `json:"status"`
+	TransferID      string        `json:"transferId"`
+	Coin            Coin          `json:"coin"`
+	Amount          string        `json:"amount"`
+	FromAccountType AccountTypeV5 `json:"fromAccountType"`
+	ToAccountType   AccountTypeV5 `json:"toAccountType"`
 }
 
 // V5InternalTransferRecordsResponse :
