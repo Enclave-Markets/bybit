@@ -16,6 +16,7 @@ type V5AssetServiceI interface {
 	GetInternalDepositRecords(V5GetInternalDepositRecordsParam) (*V5GetInternalDepositRecordsResponse, error)
 	GetWithdrawalRecords(V5GetWithdrawalRecordsParam) (*V5GetWithdrawalRecordsResponse, error)
 	GetCoinInfo(V5GetCoinInfoParam) (*V5GetCoinInfoResponse, error)
+	GetAllCoinsBalance(V5GetAllCoinsBalanceParam) (*V5GetAllCoinsBalanceResponse, error)
 }
 
 // V5AssetService :
@@ -386,4 +387,45 @@ func (s *V5AssetService) GetCoinInfo(param V5GetCoinInfoParam) (*V5GetCoinInfoRe
 	}
 
 	return &res, nil
+}
+
+// GetAllCoinsBalance :
+func (s *V5AssetService) GetAllCoinsBalance(param V5GetAllCoinsBalanceParam) (*V5GetAllCoinsBalanceResponse, error) {
+	var res V5GetAllCoinsBalanceResponse
+
+	queryString, err := query.Values(param)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.client.getV5Privately("/v5/asset/transfer/query-account-coins-balance", queryString, &res); err != nil {
+		return nil, err
+	}
+
+	return &res, nil
+}
+
+type V5GetAllCoinsBalanceParam struct {
+	MemberId    string        `url:"memberId,omitempty"`
+	AccountType AccountTypeV5 `url:"accountType,omitempty"`
+	Coins       []*Coin       `url:"coin,omitempty"`
+	WithBonus   *int          `url:"withBonus,omitempty"`
+}
+
+type V5GetAllCoinsBalanceResponse struct {
+	CommonV5Response `json:",inline"`
+	Result           V5GetAllCoinsBalanceResult `json:"result"`
+}
+
+type V5GetAllCoinsBalanceResult struct {
+	AccountType AccountTypeV5               `json:"accountType"`
+	MemberId    string                      `json:"memberId"`
+	Balance     []*V5GetAllCoinsBalanceItem `json:"balance"`
+}
+
+type V5GetAllCoinsBalanceItem struct {
+	Coin            Coin   `json:"coin"`
+	WalletBalance   string `json:"walletBalance"`
+	TransferBalance string `json:"transferBalance"`
+	Bonus           string `json:"bonus"`
 }
