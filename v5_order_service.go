@@ -15,6 +15,7 @@ type V5OrderServiceI interface {
 	GetOpenOrders(V5GetOpenOrdersParam) (*V5GetOrdersResponse, error)
 	CancelAllOrders(V5CancelAllOrdersParam) (*V5CancelAllOrdersResponse, error)
 	GetHistoryOrders(V5GetHistoryOrdersParam) (*V5GetOrdersResponse, error)
+	GetHistoryTrades(V5GetHistoryTradesParam) (*V5GetHistoryTradesResponse, error)
 }
 
 // V5OrderService :
@@ -373,6 +374,117 @@ func (s *V5OrderService) CancelAllOrders(param V5CancelAllOrdersParam) (*V5Cance
 
 	if err := s.client.postV5JSON("/v5/order/cancel-all", body, &res); err != nil {
 		return &res, err
+	}
+
+	return &res, nil
+}
+
+type V5GetHistoryTradesParam struct {
+	Category CategoryV5 `url:"category"`
+
+	Symbol      *SymbolV5 `url:"symbol,omitempty"`
+	OrderID     *string   `url:"orderId,omitempty"`
+	OrderLinkID *string   `url:"orderLinkId,omitempty"`
+	BaseCoin    *Coin     `url:"baseCoin,omitempty"`
+	StartTime   *int      `url:"startTime,omitempty"`
+	EndTime     *int      `url:"endTime,omitempty"`
+	ExecType    *string   `url:"execType,omitempty"`
+
+	Limit  *int    `url:"limit,omitempty"`
+	Cursor *string `url:"cursor,omitempty"`
+}
+
+type V5GetHistoryTradesResponse struct {
+	CommonV5Response `json:",inline"`
+	Result           V5GetTradesResult `json:"result"`
+}
+
+type V5GetTradesResult struct {
+	Category       CategoryV5   `json:"category"`
+	NextPageCursor string       `json:"nextPageCursor"`
+	List           []V5GetTrade `json:"list"`
+}
+
+type V5GetTrade struct {
+	// Symbol name
+	Symbol SymbolV5 `json:"symbol"`
+	// Order ID
+	OrderId string `json:"orderId"`
+	// User customized order ID. Classic spot is not supported
+	OrderLinkId string `json:"orderLinkId"`
+	// Side. Buy,Sell
+	Side Side `json:"side"`
+	// Order price
+	OrderPrice string `json:"orderPrice"`
+	// Order qty
+	OrderQty string `json:"orderQty"`
+	// The remaining qty not executed. Classic spot is not supported
+	LeavesQty string `json:"leavesQty"`
+	// Order create type
+	CreateType string `json:"createType"`
+	// Spot, Option do not have this key
+	// Order type. Market,Limit
+	// UTA: Only for category=linear or inverse
+	// Classic: always ""
+	OrderType OrderType `json:"orderType"`
+	// Stop order type. If the order is not stop order, it either returns UNKNOWN or "". Classic spot is not supported
+	StopOrderType string `json:"stopOrderType"`
+	// Executed trading fee. You can get spot fee currency instruction here
+	ExecFee string `json:"execFee"`
+	// Execution ID
+	ExecId string `json:"execId"`
+	// Execution price
+	ExecPrice string `json:"execPrice"`
+	// Execution qty
+	ExecQty string `json:"execQty"`
+	// Executed type. Classic spot is not supported
+	ExecType string `json:"execType"`
+	// Executed order value. Classic spot is not supported
+	ExecValue string `json:"execValue"`
+	// Executed timestamp（ms）
+	ExecTime string `json:"execTime"`
+	// Spot trading fee currency Classic spot is not supported
+	FeeCurrency string `json:"feeCurrency"`
+	// Is maker order. true: maker, false: taker
+	IsMaker bool `json:"isMaker"`
+	// Trading fee rate. Classic spot is not supported
+	FeeRate string `json:"feeRate"`
+	// Implied volatility. Valid for option
+	TradeIv string `json:"tradeIv"`
+	// Implied volatility of mark price. Valid for option
+	MarkIv string `json:"markIv"`
+	// The mark price of the symbol when executing. Classic spot is not supported
+	MarkPrice string `json:"markPrice"`
+	// The index price of the symbol when executing. Valid for option only
+	IndexPrice string `json:"indexPrice"`
+	// The underlying price of the symbol when executing. Valid for option
+	UnderlyingPrice string `json:"underlyingPrice"`
+	// Paradigm block trade ID
+	BlockTradeId string `json:"blockTradeId"`
+	// Closed position size
+	ClosedSize string `json:"closedSize"`
+	// Cross sequence, used to associate each fill and each position update
+	// The seq will be the same when conclude multiple transactions at the same time
+	// Different symbols may have the same seq, please use seq + symbol to check unique
+	// Classic account Spot trade does not have this field
+	Seq int64 `json:"seq"`
+}
+
+// GetHistoryTrades :
+func (s *V5OrderService) GetHistoryTrades(param V5GetHistoryTradesParam) (*V5GetHistoryTradesResponse, error) {
+	var res V5GetHistoryTradesResponse
+
+	if param.Category == "" {
+		return nil, fmt.Errorf("category needed")
+	}
+
+	queryString, err := query.Values(param)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := s.client.getV5Privately("/v5/execution/list", queryString, &res); err != nil {
+		return nil, err
 	}
 
 	return &res, nil
