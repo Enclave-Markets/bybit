@@ -36,6 +36,7 @@ func main() {
 			Symbol: bybit.SymbolV5BTCUSDT,
 		},
 		func(response bybit.V5WebsocketPublicOrderBookResponse) error {
+			// This is to ensure that the ordering of the responses is correct
 			if first && response.Type != "snapshot" {
 				panic("Orderbook first response should be snapshot")
 			}
@@ -62,13 +63,8 @@ func main() {
 		panic(err)
 	}
 
-	for i := 0; i < 3; i++ {
-		err = svc.Run()
-		if err != nil {
-			panic(err)
-		}
-	}
-
+	// No need to call svc.Run() here as while waiting for sub confirmation, the Run() method is called internally
+	// this also tests if the callbacks of other subscriptions are still being called while waiting for sub confirmation
 	timeout := time.After(5 * time.Second)
 	orderbook := false
 	kline := false
@@ -84,7 +80,6 @@ func main() {
 			case bybit.V5WebsocketPublicTickerResponse:
 				ticker = true
 			}
-
 		case <-timeout:
 			panic("Sub test timed out")
 		}
