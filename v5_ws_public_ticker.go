@@ -18,11 +18,13 @@ func (s *V5WebsocketPublicService) SubscribeTicker(
 		return nil, err
 	}
 	param := struct {
-		Op   string        `json:"op"`
-		Args []interface{} `json:"args"`
+		Op    string        `json:"op"`
+		Args  []interface{} `json:"args"`
+		ReqId string        `json:"req_id"`
 	}{
 		Op:   "subscribe",
 		Args: []interface{}{key.Topic()},
+		ReqId: key.Topic(),
 	}
 	buf, err := json.Marshal(param)
 	if err != nil {
@@ -31,6 +33,11 @@ func (s *V5WebsocketPublicService) SubscribeTicker(
 	if err := s.writeMessage(websocket.TextMessage, buf); err != nil {
 		return nil, err
 	}
+
+	if err := s.waitForSubConfirmation(key.Topic()); err != nil {
+		return nil, err
+	}
+
 	return func() error {
 		param := struct {
 			Op   string        `json:"op"`
