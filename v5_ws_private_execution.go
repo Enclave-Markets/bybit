@@ -50,7 +50,7 @@ func (s *V5WebsocketPrivateService) SubscribeExecutionAllInOne(
 	f func(V5WebsocketPrivateExecutionResponse) error,
 ) (func() error, error) {
 	key := V5WebsocketPrivateParamKey{
-		Topic: V5WebsocketPrivateTopicPosition,
+		Topic: V5WebsocketPrivateTopicExecution,
 	}
 	if err := s.addParamExecutionFunc(key, f); err != nil {
 		return nil, err
@@ -61,7 +61,7 @@ func (s *V5WebsocketPrivateService) SubscribeExecutionAllInOne(
 		RequestID string        `json:"req_id"`
 	}{
 		Op:        "subscribe",
-		Args:      []interface{}{V5WebsocketPrivateTopicPosition},
+		Args:      []interface{}{V5WebsocketPrivateTopicExecution},
 		RequestID: "private-execution-all-in-one",
 	}
 	buf, err := json.Marshal(param)
