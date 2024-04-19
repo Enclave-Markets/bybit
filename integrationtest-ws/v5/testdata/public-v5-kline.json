@@ -1,20 +1,20 @@
 {
-    "topic": "kline.5.BTCUSDT",
-    "data": [
-        {
-            "start": 1672324800000,
-            "end": 1672325099999,
-            "interval": "5",
-            "open": "16649.5",
-            "close": "16677",
-            "high": "16677",
-            "low": "16608",
-            "volume": "2.081",
-            "turnover": "34666.4005",
-            "confirm": false,
-            "timestamp": 1672324988882
-        }
-    ],
-    "ts": 1672324988882,
-    "type": "snapshot"
+  "topic": "kline.5.BTCUSDT",
+  "type": "snapshot",
+  "ts": 1713174261039,
+  "data": [
+    {
+      "start": 1713174000000,
+      "end": 1713174299999,
+      "interval": "5",
+      "open": "66629.1",
+      "close": "66730.3",
+      "high": "66738.1",
+      "low": "66616.3",
+      "volume": "508.334",
+      "turnover": "33888569.2091",
+      "confirm": false,
+      "timestamp": 1713174261039
+    }
+  ]
 }

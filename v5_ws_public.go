@@ -67,6 +67,10 @@ const (
 	V5WebsocketPublicPath = "/v5/public"
 )
 
+const (
+	subConfirmationTimeoutSecondsPublic = 60
+)
+
 // V5WebsocketPublicPathFor :
 func V5WebsocketPublicPathFor(category CategoryV5) string {
 	return V5WebsocketPublicPath + "/" + string(category)
@@ -211,35 +215,41 @@ func (s *V5WebsocketPublicService) Run() error {
 
 func (s *V5WebsocketPublicService) waitForSubConfirmation(topic string) error {
 	// Read 30 times to wait for the subscription confirmation.
-	for i := 0; i < 30; i++ {
-		_, message, err := s.connection.ReadMessage()
-		if err != nil {
-			return err
-		}
-		parsedData := map[string]interface{}{}
-		if err := json.Unmarshal(message, &parsedData); err != nil {
-			return err
-		}
+	timeoutCh := time.After(subConfirmationTimeoutSecondsPublic * time.Second)
 
-		// If the message is not a subscription confirmation, handle the message.
-		op, ok := parsedData["op"].(string)
-		if !ok || !strings.EqualFold(op, "subscribe") {
-			if err := s.handleMessage(message); err != nil {
+	for {
+		select {
+		case <-timeoutCh:
+			return errors.New("subscription confirmation timeout")
+		default:
+			_, message, err := s.connection.ReadMessage()
+			if err != nil {
 				return err
 			}
-		}
+			parsedData := map[string]interface{}{}
+			if err := json.Unmarshal(message, &parsedData); err != nil {
+				return err
+			}
 
-		if reqId, ok := parsedData["req_id"].(string); ok {
-			if strings.EqualFold(reqId, topic) {
-				if status, ok := parsedData["success"].(bool); ok && status {
-					return nil
-				} else {
-					return fmt.Errorf("%s subscription confirmation failed with message %s", topic, parsedData["ret_msg"])
+			// If the message is not a subscription confirmation, handle the message.
+			op, ok := parsedData["op"].(string)
+			if !ok || !strings.EqualFold(op, "subscribe") {
+				if err := s.handleMessage(message); err != nil {
+					return err
+				}
+			}
+
+			if reqId, ok := parsedData["req_id"].(string); ok {
+				if strings.EqualFold(reqId, topic) {
+					if status, ok := parsedData["success"].(bool); ok && status {
+						return nil
+					} else {
+						return fmt.Errorf("%s subscription confirmation failed with message %s", topic, parsedData["ret_msg"])
+					}
 				}
 			}
 		}
 	}
-	return errors.New("subscription confirmation timeout")
 }
 
 func (s *V5WebsocketPublicService) handleMessage(message []byte) error {

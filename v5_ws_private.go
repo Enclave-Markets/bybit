@@ -49,6 +49,10 @@ type V5WebsocketPrivateService struct {
 }
 
 const (
+	subConfirmationTimeoutSecondsPrivate = 60
+)
+
+const (
 	// V5WebsocketPrivatePath :
 	V5WebsocketPrivatePath = "/v5/private"
 )
@@ -231,36 +235,41 @@ func (s *V5WebsocketPrivateService) handleMessage(message []byte) error {
 }
 
 func (s *V5WebsocketPrivateService) waitForSubConfirmation(topic string) error {
-	// Read 30 times to wait for the subscription confirmation.
-	for i := 0; i < 30; i++ {
-		_, message, err := s.connection.ReadMessage()
-		if err != nil {
-			return err
-		}
-		parsedData := map[string]interface{}{}
-		if err := json.Unmarshal(message, &parsedData); err != nil {
-			return err
-		}
+	timeoutCh := time.After(subConfirmationTimeoutSecondsPrivate * time.Second)
 
-		// If the message is not a subscription confirmation, handle the message.
-		op, ok := parsedData["op"].(string)
-		if !ok || !strings.EqualFold(op, "subscribe") {
-			if err := s.handleMessage(message); err != nil {
+	for {
+		select {
+		case <-timeoutCh:
+			return errors.New("subscription confirmation timeout")
+		default:
+			_, message, err := s.connection.ReadMessage()
+			if err != nil {
 				return err
 			}
-		}
+			parsedData := map[string]interface{}{}
+			if err := json.Unmarshal(message, &parsedData); err != nil {
+				return err
+			}
 
-		if reqId, ok := parsedData["req_id"].(string); ok {
-			if strings.EqualFold(reqId, topic) {
-				if status, ok := parsedData["success"].(bool); ok && status {
-					return nil
-				} else {
-					return fmt.Errorf("%s subscription confirmation failed with message %s", topic, parsedData["ret_msg"])
+			// If the message is not a subscription confirmation, handle the message.
+			op, ok := parsedData["op"].(string)
+			if !ok || !strings.EqualFold(op, "subscribe") {
+				if err := s.handleMessage(message); err != nil {
+					return err
+				}
+			}
+
+			if reqId, ok := parsedData["req_id"].(string); ok {
+				if strings.EqualFold(reqId, topic) {
+					if status, ok := parsedData["success"].(bool); ok && status {
+						return nil
+					} else {
+						return fmt.Errorf("%s subscription confirmation failed with message %s", topic, parsedData["ret_msg"])
+					}
 				}
 			}
 		}
 	}
-	return errors.New("subscription confirmation timeout")
 }
 
 // Ping :
