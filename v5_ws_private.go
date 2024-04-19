@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"strings"
 	"sync"
 	"time"
 
@@ -46,6 +47,10 @@ type V5WebsocketPrivateService struct {
 	paramPositionMap map[V5WebsocketPrivateParamKey]func(V5WebsocketPrivatePositionResponse) error
 	paramWalletMap   map[V5WebsocketPrivateParamKey]func(V5WebsocketPrivateWalletResponse) error
 }
+
+const (
+	subConfirmationTimeoutSecondsPrivate = 60
+)
 
 const (
 	// V5WebsocketPrivatePath :
@@ -176,7 +181,10 @@ func (s *V5WebsocketPrivateService) Run() error {
 	if err != nil {
 		return err
 	}
+	return s.handleMessage(message)
+}
 
+func (s *V5WebsocketPrivateService) handleMessage(message []byte) error {
 	topic, err := s.judgeTopic(message)
 	if err != nil {
 		return err
@@ -223,8 +231,45 @@ func (s *V5WebsocketPrivateService) Run() error {
 			return err
 		}
 	}
-
 	return nil
+}
+
+func (s *V5WebsocketPrivateService) waitForSubConfirmation(topic string) error {
+	timeoutCh := time.After(subConfirmationTimeoutSecondsPrivate * time.Second)
+
+	for {
+		select {
+		case <-timeoutCh:
+			return errors.New("subscription confirmation timeout")
+		default:
+			_, message, err := s.connection.ReadMessage()
+			if err != nil {
+				return err
+			}
+			parsedData := map[string]interface{}{}
+			if err := json.Unmarshal(message, &parsedData); err != nil {
+				return err
+			}
+
+			// If the message is not a subscription confirmation, handle the message.
+			op, ok := parsedData["op"].(string)
+			if !ok || !strings.EqualFold(op, "subscribe") {
+				if err := s.handleMessage(message); err != nil {
+					return err
+				}
+			}
+
+			if reqId, ok := parsedData["req_id"].(string); ok {
+				if strings.EqualFold(reqId, topic) {
+					if status, ok := parsedData["success"].(bool); ok && status {
+						return nil
+					} else {
+						return fmt.Errorf("%s subscription confirmation failed with message %s", topic, parsedData["ret_msg"])
+					}
+				}
+			}
+		}
+	}
 }
 
 // Ping :

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -64,6 +65,10 @@ type V5WebsocketPublicService struct {
 const (
 	// V5WebsocketPublicPath :
 	V5WebsocketPublicPath = "/v5/public"
+)
+
+const (
+	subConfirmationTimeoutSecondsPublic = 60
 )
 
 // V5WebsocketPublicPathFor :
@@ -205,7 +210,49 @@ func (s *V5WebsocketPublicService) Run() error {
 	if err != nil {
 		return err
 	}
+	return s.handleMessage(message)
+}
 
+func (s *V5WebsocketPublicService) waitForSubConfirmation(topic string) error {
+	// Read 30 times to wait for the subscription confirmation.
+	timeoutCh := time.After(subConfirmationTimeoutSecondsPublic * time.Second)
+
+	for {
+		select {
+		case <-timeoutCh:
+			return errors.New("subscription confirmation timeout")
+		default:
+			_, message, err := s.connection.ReadMessage()
+			if err != nil {
+				return err
+			}
+			parsedData := map[string]interface{}{}
+			if err := json.Unmarshal(message, &parsedData); err != nil {
+				return err
+			}
+
+			// If the message is not a subscription confirmation, handle the message.
+			op, ok := parsedData["op"].(string)
+			if !ok || !strings.EqualFold(op, "subscribe") {
+				if err := s.handleMessage(message); err != nil {
+					return err
+				}
+			}
+
+			if reqId, ok := parsedData["req_id"].(string); ok {
+				if strings.EqualFold(reqId, topic) {
+					if status, ok := parsedData["success"].(bool); ok && status {
+						return nil
+					} else {
+						return fmt.Errorf("%s subscription confirmation failed with message %s", topic, parsedData["ret_msg"])
+					}
+				}
+			}
+		}
+	}
+}
+
+func (s *V5WebsocketPublicService) handleMessage(message []byte) error {
 	topic, err := s.judgeTopic(message)
 	if err != nil {
 		return err
