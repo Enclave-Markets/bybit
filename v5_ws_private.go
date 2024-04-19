@@ -27,6 +27,10 @@ type V5WebsocketPrivateServiceI interface {
 		func(V5WebsocketPrivateOrderResponse) error,
 	) (func() error, error)
 
+	SubscribeExecutionAllInOne(
+		func(V5WebsocketPrivateExecutionResponse) error,
+	) (func() error, error)
+
 	SubscribePosition(
 		func(V5WebsocketPrivatePositionResponse) error,
 	) (func() error, error)
