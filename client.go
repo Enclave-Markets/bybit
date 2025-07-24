@@ -105,7 +105,14 @@ func (c *Client) Request(req *http.Request, dst interface{}) error {
 	case resp.StatusCode == http.StatusNotFound:
 		return ErrPathNotFound
 	default:
-		return errors.New("unexpected error")
+		statusCode := resp.StatusCode
+		responseBody := "<no body>"
+		body, err := io.ReadAll(resp.Body)
+		if err == nil {
+			responseBody = string(body)
+		}
+
+		return errors.New(fmt.Sprintf("unexpected error: error code %d, response body: %s", statusCode, responseBody))
 	}
 }
 
